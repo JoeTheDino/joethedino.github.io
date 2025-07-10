@@ -15,82 +15,71 @@
 </model-viewer>
     <script type="module">
         // Attend que la page soit entièrement chargée
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             
             const modelViewer = document.querySelector('#viewer');
             const video = document.querySelector('#video-texture');
 
             if (!video) {
-                console.error("ERREUR CRITIQUE : L'élément vidéo avec l'ID '#video-texture' n'a pas été trouvé.");
+                console.error("ERREUR CRITIQUE : L'élément vidéo n'a pas été trouvé.");
                 return;
             }
 
-            // Ajout d'un écouteur d'erreur pour le modèle 3D, très utile pour le débogage.
-            modelViewer.addEventListener('error', (event) => {
-                console.error('Erreur de chargement du modèle 3D:', event.detail);
-            });
+            // --- APPROCHE FINALE ET ROBUSTE ---
 
-            const applyVideoTexture = async () => {
-                console.log("Application de la texture via un canvas.");
+            // 1. Attendre que le modèle 3D soit complètement chargé.
+            await modelViewer.updateComplete;
+            console.log("Modèle 3D prêt.");
 
-                try {
-                    // --- APPROCHE CANVAS (la plus stable) ---
+            // 2. Préparer le canvas qui servira de source pour la texture.
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
 
-                    // 1. Créer un élément canvas en mémoire
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
+            // 3. Attendre que la vidéo puisse commencer à jouer.
+            video.play().then(async () => {
+                console.log("La lecture de la vidéo a commencé.");
 
-                    // 2. Définir la taille du canvas pour correspondre à la vidéo
+                // 4. Attendre que les métadonnées (dimensions) de la vidéo soient chargées.
+                video.addEventListener('loadedmetadata', async () => {
+                    console.log("Métadonnées de la vidéo chargées.");
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
 
-                    // 3. Créer la texture à partir du canvas
-                    const texture = await modelViewer.createTexture(canvas);
+                    try {
+                        // 5. Créer la texture à partir du canvas.
+                        const texture = await modelViewer.createTexture(canvas);
 
-                    // 4. Appliquer la texture au matériel
-                    const material = modelViewer.model.materials.find(m => m.name === 'Screen');
-                    
-                    if (material) {
-                        console.log("Matériel trouvé:", material.name);
-                        material.pbrMetallicRoughness.setBaseColorTexture(texture);
-                        material.setEmissiveTexture(texture);
-                        console.log("Texture (depuis canvas) appliquée au matériel.");
-                    } else {
-                        console.warn("Le matériel cible n'a pas été trouvé.");
-                        return;
-                    }
-
-                    // 5. Démarrer une boucle pour dessiner la vidéo sur le canvas en continu
-                    const updateCanvas = () => {
-                        if (video.paused || video.ended) {
+                        // 6. Trouver et appliquer la texture au matériel.
+                        // IMPORTANT: Remplacez 'Screen' par le nom du matériel de VOTRE modèle.
+                        const material = modelViewer.model.materials.find(m => m.name === 'Screen');
+                        
+                        if (material) {
+                            material.pbrMetallicRoughness.setBaseColorTexture(texture);
+                            material.setEmissiveTexture(texture);
+                            console.log("Texture appliquée avec succès.");
+                        } else {
+                            console.warn("Le matériel cible 'Screen' n'a pas été trouvé.");
                             return;
                         }
-                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        // 7. Démarrer la boucle de rafraîchissement du canvas.
+                        const updateCanvas = () => {
+                            if (!video.paused && !video.ended) {
+                                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            }
+                            // model-viewer met à jour la texture automatiquement quand le canvas change.
+                            requestAnimationFrame(updateCanvas);
+                        };
                         requestAnimationFrame(updateCanvas);
-                    };
-                    requestAnimationFrame(updateCanvas);
 
-                } catch (error) {
-                    console.error("Erreur lors de la création ou de l'application de la texture via le canvas :", error);
-                }
-            };
+                    } catch(error) {
+                        console.error("Erreur finale lors de la création/application de la texture:", error);
+                    }
+                });
 
-            // --- NOUVELLE LOGIQUE DE DÉMARRAGE (plus robuste) ---
-            const videoPlayPromise = video.play();
-
-            if (videoPlayPromise !== undefined) {
-                // On attend que le modèle soit chargé ET que la vidéo ait commencé à jouer.
-                Promise.all([modelViewer.loaded, videoPlayPromise])
-                    .then(() => {
-                        console.log("Le modèle est chargé ET la vidéo a commencé à jouer.");
-                        applyVideoTexture();
-                    })
-                    .catch(error => {
-                        console.error("Une erreur est survenue lors du chargement du modèle ou de la vidéo:", error);
-                    });
-            } else {
-                console.warn("Le navigateur ne supporte pas la promesse de video.play().");
-            }
+            }).catch(error => {
+                console.error("La lecture automatique de la vidéo a été bloquée:", error);
+            });
         });
     </script>
                 <button slot="ar-button" style="background-color: white; border-radius: 4px; border: solid blue; position: absolute; top: 16px; right: 16px; ">Activate AR</button>
