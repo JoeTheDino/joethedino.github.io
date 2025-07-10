@@ -13,7 +13,7 @@
         </video>
 <model-viewer id="viewer" src="./ModelMupiSolidBase.glb" ar alt="A 3D model of a duck" camera-controls background-color="#455A64">             
 </model-viewer>
-<script type="module">
+    <script type="module">
         // Attend que la page soit entièrement chargée
         window.addEventListener('load', () => {
             
@@ -25,22 +25,16 @@
                 return;
             }
 
-            let isModelLoaded = false;
-            let isVideoPlaying = false;
-            let isTextureApplied = false; // Drapeau pour s'assurer que le code ne s'exécute qu'une seule fois
+            // Ajout d'un écouteur d'erreur pour le modèle 3D, très utile pour le débogage.
+            modelViewer.addEventListener('error', (event) => {
+                console.error('Erreur de chargement du modèle 3D:', event.detail);
+            });
 
-            // Fonction qui sera appelée uniquement quand le modèle ET la vidéo seront prêts.
             const applyVideoTexture = async () => {
-                // Si le modèle n'est pas chargé, si la vidéo ne joue pas, ou si la texture est déjà appliquée, on sort.
-                if (!isModelLoaded || !isVideoPlaying || isTextureApplied) {
-                    return;
-                }
-                isTextureApplied = true; // Empêche les exécutions multiples
-                console.log("Modèle chargé et vidéo en lecture. Application de la texture via un canvas.");
+                console.log("Application de la texture via un canvas.");
 
                 try {
-                    // --- NOUVELLE APPROCHE : UTILISATION D'UN CANVAS ---
-                    // C'est une méthode plus robuste pour éviter les bugs de createTexture avec les vidéos.
+                    // --- APPROCHE CANVAS (la plus stable) ---
 
                     // 1. Créer un élément canvas en mémoire
                     const canvas = document.createElement('canvas');
@@ -50,11 +44,10 @@
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
 
-                    // 3. Créer la texture à partir du canvas (qui est pour l'instant vide)
+                    // 3. Créer la texture à partir du canvas
                     const texture = await modelViewer.createTexture(canvas);
 
                     // 4. Appliquer la texture au matériel
-                    // IMPORTANT : Le nom du matériel doit correspondre au modèle chargé. Pour le modèle TV, c'est 'Screen'.
                     const material = modelViewer.model.materials.find(m => m.name === 'Screen');
                     
                     if (material) {
@@ -64,44 +57,40 @@
                         console.log("Texture (depuis canvas) appliquée au matériel.");
                     } else {
                         console.warn("Le matériel cible n'a pas été trouvé.");
-                        return; // On arrête si le matériel n'existe pas
+                        return;
                     }
 
                     // 5. Démarrer une boucle pour dessiner la vidéo sur le canvas en continu
                     const updateCanvas = () => {
                         if (video.paused || video.ended) {
-                            return; // Arrête la boucle si la vidéo n'est plus en lecture
+                            return;
                         }
                         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        // model-viewer détecte automatiquement le changement du canvas et met à jour la texture
                         requestAnimationFrame(updateCanvas);
                     };
                     requestAnimationFrame(updateCanvas);
 
                 } catch (error) {
                     console.error("Erreur lors de la création ou de l'application de la texture via le canvas :", error);
-                    isTextureApplied = false; // Permet de réessayer en cas d'erreur
                 }
             };
 
-            // 1. On écoute l'événement 'load' du modèle 3D.
-            modelViewer.addEventListener('load', () => {
-                console.log('Modèle 3D chargé.');
-                isModelLoaded = true;
-                applyVideoTexture();
-            });
+            // --- NOUVELLE LOGIQUE DE DÉMARRAGE (plus robuste) ---
+            const videoPlayPromise = video.play();
 
-            // 2. On écoute l'événement 'playing' de la vidéo.
-            video.addEventListener('playing', () => {
-                console.log('La lecture de la vidéo a commencé.');
-                isVideoPlaying = true;
-                applyVideoTexture();
-            });
-            
-            // On s'assure que le navigateur tente de lire la vidéo.
-            video.play().catch(error => {
-                console.error("La lecture automatique de la vidéo a été bloquée par le navigateur. Une interaction de l'utilisateur peut être nécessaire.", error);
-            });
+            if (videoPlayPromise !== undefined) {
+                // On attend que le modèle soit chargé ET que la vidéo ait commencé à jouer.
+                Promise.all([modelViewer.loaded, videoPlayPromise])
+                    .then(() => {
+                        console.log("Le modèle est chargé ET la vidéo a commencé à jouer.");
+                        applyVideoTexture();
+                    })
+                    .catch(error => {
+                        console.error("Une erreur est survenue lors du chargement du modèle ou de la vidéo:", error);
+                    });
+            } else {
+                console.warn("Le navigateur ne supporte pas la promesse de video.play().");
+            }
         });
     </script>
                 <button slot="ar-button" style="background-color: white; border-radius: 4px; border: solid blue; position: absolute; top: 16px; right: 16px; ">Activate AR</button>
