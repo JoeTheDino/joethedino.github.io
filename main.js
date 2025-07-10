@@ -44,9 +44,21 @@ let camera, scene, renderer, controller;
 
         // Appliquer la texture vidéo à un des matériaux
         model.traverse((child) => {
-          if (child.isMesh) {
-            child.material = new THREE.MeshBasicMaterial({ map: videoTexture });
+            if (child.isMesh && child.material) {
+      // Si le matériau est un tableau (multi-material)
+      if (Array.isArray(child.material)) {
+        child.material.forEach((mat, i) => {
+          if (mat.name === 'Screen') {
+            child.material[i] = new THREE.MeshBasicMaterial({ map: videoTexture });
           }
+        });
+      } else {
+        // Si c'est un matériau unique
+        if (child.material.name === 'Screen') {
+          child.material = new THREE.MeshBasicMaterial({ map: videoTexture });
+        }
+      }
+    }
         });
 
         model.scale.set(0.5, 0.5, 0.5);
