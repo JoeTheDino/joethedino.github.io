@@ -38,7 +38,7 @@ let camera, scene, renderer, controller;
       const videoTexture = new THREE.VideoTexture(video);
 
       // Charger un modèle GLTF
-      const loader = new THREE.GLTFLoader();
+      const loader = new GLTFLoader();
       loader.load('./ModelMupiSolidBase.glb', function (gltf) {
         const model = gltf.scene;
 
