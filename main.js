@@ -27,6 +27,16 @@ let camera, scene, renderer, controller;
 
       document.body.appendChild(ARButton.createButton(renderer));
 
+      //Lumières
+      
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+        scene.add(light);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(1, 1, 1);
+        scene.add(dirLight);
+
+
+
       // Créer une vidéo texture
       const video = document.createElement('video');
       video.src = './Dior-Jadore5th_916_LQ.mp4'; // Remplace par le chemin de ta vidéo
