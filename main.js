@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { ARButton } from 'three/examples/jsm/Addons.js';
 /*
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -24,7 +25,7 @@ let camera, scene, renderer, controller;
       renderer.xr.enabled = true;
       document.body.appendChild(renderer.domElement);
 
-      document.body.appendChild(THREE.ARButton.createButton(renderer));
+      document.body.appendChild(ARButton.createButton(renderer));
 
       // Créer une vidéo texture
       const video = document.createElement('video');
