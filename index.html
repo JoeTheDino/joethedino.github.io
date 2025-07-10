@@ -1,21 +1,63 @@
-<!-- Import the component -->
-<script type="module" src="model-viewer.js"></script>
-<style>
-    model-viewer{
-        width: 100%;
-        height : 500px;
-    }
-</style>
-<!-- Use it like any other HTML element -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobilier Urbain avec Vidéo Intégrée</title>
+    
+    <!-- Importation de Tailwind CSS pour un style moderne et épuré -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Importation de la bibliothèque model-viewer -->
+    <script type="module" src="model-viewer.js"></script>
+
+    <style>
+        /* Personnalisation pour que model-viewer prenne bien la place */
+        model-viewer {
+            width: 100%;
+            height: 500px;
+            border-radius: 0.5rem; /* Bords arrondis */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+
+    <div class="w-full max-w-4xl bg-white rounded-xl shadow-2xl p-6 sm:p-8 text-center">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Démonstration : Mobilier Urbain Interactif</h1>
+        <p class="text-gray-600 mb-6">Interagissez avec le modèle 3D ci-dessous. La vidéo est jouée en temps réel sur l'écran.</p>
+
+        <!-- 
+          La balise <video>
+          - Elle est cachée avec `display: none;` car nous ne voulons pas la voir directement.
+          - `autoplay muted loop playsinline` sont essentiels pour que la vidéo démarre automatiquement, en boucle, sans son,
+            et fonctionne correctement sur les appareils mobiles (surtout iOS).
+        -->
         <video id="video-texture" style="display:none;" autoplay muted loop playsinline 
                src="./Dior-Jadore5th_916_LQ.mp4"
                onerror="this.onerror=null;this.src='https://placehold.co/1280x720/000000/FFFFFF?text=Video+Error';">
         </video>
-<model-viewer id="viewer" src="./ModelMupiSolidBase.glb" ar alt="A 3D model of a duck" camera-controls background-color="#455A64">             
-</model-viewer>
+        <model-viewer id="viewer" 
+                      src="./ModelMupiSolidBase.glb"
+                      alt="Mupi"
+                      camera-controls
+                      auto-rotate
+                      ar
+                      ar-modes="webxr scene-viewer quick-look"
+                      shadow-intensity="1">
+            <div class="absolute top-4 left-4 bg-black bg-opacity-50 text-white text-xs rounded-full px-3 py-1">
+                Modèle 3D chargé
+            </div>
+        </model-viewer>
+        
+        <div class="mt-6 text-sm text-gray-500">
+            <p>Ce modèle est un exemple. Remplacez-le par votre propre fichier `.glb` hébergé sur un serveur compatible CORS.</p>
+            <p>Le nom du matériel de l'écran ('Screen' pour ce modèle) doit correspondre à celui de votre modèle.</p>
+        </div>
+    </div>
+
     <script type="module">
         // Attend que la page soit entièrement chargée
-        window.addEventListener('load', async () => {
+        window.addEventListener('load', () => {
             
             const modelViewer = document.querySelector('#viewer');
             const video = document.querySelector('#video-texture');
@@ -25,31 +67,31 @@
                 return;
             }
 
-            // --- APPROCHE FINALE ET ROBUSTE ---
+            // --- APPROCHE SÉQUENTIELLE ET SIMPLIFIÉE ---
 
-            // 1. Attendre que le modèle 3D soit complètement chargé.
-            await modelViewer.updateComplete;
-            console.log("Modèle 3D prêt.");
+            // 1. Attendre que le modèle soit chargé
+            modelViewer.addEventListener('load', () => {
+                console.log("Modèle 3D chargé. En attente de la vidéo.");
 
-            // 2. Préparer le canvas qui servira de source pour la texture.
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-
-            // 3. Attendre que la vidéo puisse commencer à jouer.
-            video.play().then(async () => {
-                console.log("La lecture de la vidéo a commencé.");
-
-                // 4. Attendre que les métadonnées (dimensions) de la vidéo soient chargées.
-                video.addEventListener('loadedmetadata', async () => {
-                    console.log("Métadonnées de la vidéo chargées.");
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
+                // 2. Attendre que la vidéo soit effectivement en cours de lecture
+                video.addEventListener('playing', async () => {
+                    console.log("La vidéo est en cours de lecture. Préparation du canvas.");
 
                     try {
-                        // 5. Créer la texture à partir du canvas.
-                        const texture = await modelViewer.createTexture(canvas);
+                        // 3. Préparer le canvas
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
 
-                        // 6. Trouver et appliquer la texture au matériel.
+                        // 4. Dessiner la PREMIÈRE image de la vidéo sur le canvas
+                        // C'est une étape cruciale pour s'assurer que le canvas n'est pas vide
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        // 5. Créer la texture à partir du canvas qui contient maintenant une image
+                        const texture = await modelViewer.createTexture(canvas);
+                        
+                        // 6. Trouver et appliquer la texture au matériel
                         // IMPORTANT: Remplacez 'Screen' par le nom du matériel de VOTRE modèle.
                         const material = modelViewer.model.materials.find(m => m.name === 'Screen');
                         
@@ -62,24 +104,25 @@
                             return;
                         }
 
-                        // 7. Démarrer la boucle de rafraîchissement du canvas.
+                        // 7. Démarrer la boucle pour rafraîchir le canvas avec les images suivantes de la vidéo
                         const updateCanvas = () => {
                             if (!video.paused && !video.ended) {
                                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                             }
-                            // model-viewer met à jour la texture automatiquement quand le canvas change.
                             requestAnimationFrame(updateCanvas);
                         };
                         requestAnimationFrame(updateCanvas);
 
-                    } catch(error) {
+                    } catch (error) {
                         console.error("Erreur finale lors de la création/application de la texture:", error);
                     }
-                });
+                }, { once: true }); // L'option 'once' garantit que ce code ne s'exécute qu'une seule fois.
 
-            }).catch(error => {
-                console.error("La lecture automatique de la vidéo a été bloquée:", error);
+                // Tenter de lancer la vidéo
+                video.play().catch(e => console.error("La lecture auto a été bloquée:", e));
             });
         });
     </script>
-                <button slot="ar-button" style="background-color: white; border-radius: 4px; border: solid blue; position: absolute; top: 16px; right: 16px; ">Activate AR</button>
+<button slot="ar-button" style="background-color: white; border-radius: 4px; border: solid blue; position: absolute; top: 16px; right: 16px; ">Activate AR</button>
+</body>
+</html>
