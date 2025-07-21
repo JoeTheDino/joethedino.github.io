@@ -1,0 +1,14 @@
+# Dependencies
+/node_modules
+
+# Vite production build output
+/dist
+
+# Local .env files
+.env*.local
+
+# npm package manager cache
+.npm/
+
+# gh-pages cache
+.cache/
