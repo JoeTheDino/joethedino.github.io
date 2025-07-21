@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-    base: '/',
+    base: '/WebAR-app',
 
     build: {
         outDir: 'dist',
