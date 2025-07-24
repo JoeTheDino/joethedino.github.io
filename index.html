@@ -9,17 +9,29 @@
     video { display: none; }
   </style>
 
-  <script type="importmap">
+ <!-- <script type="importmap">
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js",
     "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/"
   }
 }
-</script>
-  <script type="module" crossorigin src="./assets/main.js"></script>
+</script>-->
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+<script type="module" crossorigin src="./assets/main.js"></script>
 </head>
 <body>
-
+<model-viewer
+  id="ar-model"
+  src="/WebAR-app/ModelMupiSolidBase.glb"
+  ar
+  ar-modes="webxr quick-look scene-viewer"
+  camera-controls
+  auto-rotate
+  style="width: 100vw; height: 100vh; background: transparent;"
+  exposure="1.0"
+  shadow-intensity="1"
+  alt="Mupi Dior AR"
+></model-viewer>
 </body>
 </html>
