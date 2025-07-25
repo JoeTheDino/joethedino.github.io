@@ -4,25 +4,86 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WebAR avec vidéo texture</title>
-  <style>
-    body { margin: 0; overflow: hidden; }
-    video { display: none; }
-  </style>
-
- <!-- <script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.178.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.178.0/examples/jsm/"
-  }
-}
-</script>-->
-<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
-<script type="module" crossorigin src="./assets/main.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Styles personnalisés pour la mise en page */
+        body {
+            font-family: "Inter", sans-serif; /* Utilisation de la police Inter */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f4f8; /* Couleur de fond douce */
+            color: #334155; /* Couleur du texte */
+            padding: 1rem;
+        }
+        model-viewer {
+            width: 100%;
+            max-width: 800px; /* Largeur maximale pour le modèle */
+            height: 500px; /* Hauteur fixe pour le modèle */
+            background-color: #ffffff; /* Fond blanc pour le viewer */
+            border-radius: 1rem; /* Bords arrondis */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Ombre légère */
+            --progress-bar-color: #4f46e5; /* Couleur de la barre de progression */
+            --control-button-color: #4f46e5; /* Couleur des boutons de contrôle */
+            --control-button-background-color: #e0e7ff; /* Couleur de fond des boutons de contrôle */
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem; /* Espacement entre les éléments */
+            width: 100%;
+            max-width: 900px;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .info-text {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .button {
+            padding: 0.75rem 1.5rem;
+            font-weight: bold;
+            border-radius: 9999px; /* Fully rounded */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .button-primary {
+            background-image: linear-gradient(to right, #4f46e5, #8b5cf6); /* Indigo to Violet */
+            color: white;
+        }
+        .button-primary:hover {
+            background-image: linear-gradient(to right, #4338ca, #7c3aed);
+        }
+        .button-secondary {
+            background-image: linear-gradient(to right, #ef4444, #f97316); /* Red to Orange */
+            color: white;
+        }
+        .button-secondary:hover {
+            background-image: linear-gradient(to right, #dc2626, #ea580c);
+        }
+    </style>
+<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>-->
+<script type="module" src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
+<!--<script type="module" crossorigin src="./assets/main.js"></script>-->
 </head>
 <body>
 <model-viewer
-  id="ar-model"
+  id="animated"
   src="/WebAR-app/ModelMupiSolidBase.glb"
   ar
   ar-modes="webxr quick-look scene-viewer"
@@ -32,6 +93,51 @@
   exposure="1.0"
   shadow-intensity="1"
   alt="Mupi Dior AR"
-></model-viewer>
+>
+
+<button slot="ar-button" class="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold rounded-full shadow-lg hover:from-green-600 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h.01M12 18h.01M19 18h.01M6 12H3v4a2 2 0 002 2h14a2 2 0 002-2v-4h-3M6 6h.01M12 6h.01M18 6h.01" />
+  </svg>
+    Voir en AR
+</button>
+
+</model-viewer>
+
+<script type="module">
+  const modelViewerAnimated = document.querySelector("model-viewer#animated");
+
+  let videoTexture = null;
+
+  customElements.whenDefined('model-viewer').then(() => {
+    videoTexture = modelViewerAnimated.createVideoTexture("/WebAR-app/Dior-Jadore5th_916_LQ.mp4");
+
+  });
+
+  modelViewerAnimated.addEventListener("load", async () => {
+    const materials = modelViewerAnimated.model.materials;
+    const screenMaterial = materials.find(mat => mat.name === "Screen");
+
+    if (screenMaterial && videoTexture) {
+      const { pbrMetallicRoughness } = screenMaterial;
+      
+      // Appliquer la texture vidéo à la base color
+      pbrMetallicRoughness.baseColorTexture.setTexture(videoTexture);
+
+      // Appliquer la texture vidéo à l'emissive
+      screenMaterial.emissiveTexture.setTexture(videoTexture);
+      const sampler = screenMaterial.pbrMetallicRoughness.baseColorTexture.texture.sampler;
+      sampler.setScale({ u: 1, v: -1 });
+      const samplerEmissive = screenMaterial.pbrMetallicRoughness.emissiveTexture.texture.sampler;
+      samplerEmissive.setScale({ u: 1, v: -1 });
+      // Optionnel : augmenter l'intensité de l'émissive si nécessaire
+      //screenMaterial.emissiveFactor.set(1.0, 1.0, 1.0);
+    } else {
+      console.warn("Matériau 'Screen' non trouvé ou texture vidéo non prête.");
+    }
+  });
+</script>
+
+
 </body>
 </html>

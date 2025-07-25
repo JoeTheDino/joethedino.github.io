@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WebAR avec vidéo texture</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+        /* Styles personnalisés pour la mise en page */
+        body {
+            font-family: "Inter", sans-serif; /* Utilisation de la police Inter */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f4f8; /* Couleur de fond douce */
+            color: #334155; /* Couleur du texte */
+            padding: 1rem;
+        }
+        model-viewer {
+            width: 100%;
+            max-width: 800px; /* Largeur maximale pour le modèle */
+            height: 500px; /* Hauteur fixe pour le modèle */
+            background-color: #ffffff; /* Fond blanc pour le viewer */
+            border-radius: 1rem; /* Bords arrondis */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Ombre légère */
+            --progress-bar-color: #4f46e5; /* Couleur de la barre de progression */
+            --control-button-color: #4f46e5; /* Couleur des boutons de contrôle */
+            --control-button-background-color: #e0e7ff; /* Couleur de fond des boutons de contrôle */
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem; /* Espacement entre les éléments */
+            width: 100%;
+            max-width: 900px;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .info-text {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .button {
+            padding: 0.75rem 1.5rem;
+            font-weight: bold;
+            border-radius: 9999px; /* Fully rounded */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .button-primary {
+            background-image: linear-gradient(to right, #4f46e5, #8b5cf6); /* Indigo to Violet */
+            color: white;
+        }
+        .button-primary:hover {
+            background-image: linear-gradient(to right, #4338ca, #7c3aed);
+        }
+        .button-secondary {
+            background-image: linear-gradient(to right, #ef4444, #f97316); /* Red to Orange */
+            color: white;
+        }
+        .button-secondary:hover {
+            background-image: linear-gradient(to right, #dc2626, #ea580c);
+        }
+    </style>
+<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>-->
+<script src="https://unpkg.com/@google/model-viewer@4.1.0/dist/model-viewer.min.js" type="module"></script>
+<!--<script type="module" crossorigin src="./assets/main.js"></script>-->
+</head>
+<body>
+<model-viewer alt="Mupi Dior AR" ar="" ar-modes="webxr quick-look scene-viewer" auto-rotate="" camera-controls="" exposure="1.0" id="modelViewer" shadow-intensity="1" src="/WebAR-app/ModelMupiSolidBase.glb" style="width: 100vw; height: 100vh; background: transparent;">
+<button class="flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-500 to-teal-600 text-white font-bold rounded-full shadow-lg hover:from-green-600 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300" slot="ar-button">
+<svg class="h-6 w-6 mr-2" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h.01M12 18h.01M19 18h.01M6 12H3v4a2 2 0 002 2h14a2 2 0 002-2v-4h-3M6 6h.01M12 6h.01M18 6h.01" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+    Voir en AR
+</button>
+</model-viewer>
+<video autoplay="" id="videoTexture" loop="" muted="" playsinline="" src="/WebAR-app/Dior-Jadore5th_916_LQ.mp4" style="display:none;"></video>
+<div class="controls">
+<button class="button button-primary" id="playPauseButton">
+<span id="playPauseText">Pause Vidéo</span>
+</button>
+</div>
+<script type="module">
+        // Importation explicite de Three.js en tant que module
+        import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js';
+
+        // Fonction pour parcourir récursivement un objet et LOGUER les matériaux trouvés
+        function findAndLogMaterials(object) {
+            if (object.isMesh && object.material) {
+                const materials = Array.isArray(object.material) ? object.material : [object.material];
+                console.log(`Maillage trouvé: ${object.name || 'Sans nom'}`);
+                materials.forEach((material, index) => {
+                    console.log(`  Matériau ${index}: Nom="${material.name || 'Sans nom'}", Type="${material.type}"`);
+                    // Pour des informations plus détaillées sur la texture actuelle, vous pouvez ajouter :
+                    // if (material.map) {
+                    //     console.log(`    Texture actuelle: ${material.map.name || 'Sans nom'}`);
+                    // }
+                });
+            }
+
+            if (object.children && object.children.length > 0) {
+                for (const child of object.children) {
+                    findAndLogMaterials(child);
+                }
+            }
+        }
+
+        // Fonction pour parcourir récursivement un objet et appliquer une texture vidéo à un matériau spécifique
+        function findAndApplyVideoTexture(object, videoTexture, materialName) {
+            let materialFound = false;
+
+            if (object.isMesh && object.material) {
+                const materials = Array.isArray(object.material) ? object.material : [object.material];
+
+                for (const material of materials) {
+                    if (material.name && material.name.toLowerCase() === materialName.toLowerCase()) {
+                        console.log(`Matériau "${material.name}" trouvé sur le maillage : ${object.name || 'Sans nom'}`);
+                        material.map = videoTexture;
+                        material.needsUpdate = true;
+                        materialFound = true;
+                    }
+                }
+            }
+
+            if (object.children && object.children.length > 0) {
+                for (const child of object.children) {
+                    if (findAndApplyVideoTexture(child, videoTexture, materialName)) {
+                        materialFound = true;
+                    }
+                }
+            }
+            return materialFound;
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded fired.'); // Debug log
+
+            const modelViewer = document.getElementById('modelViewer');
+            const videoElement = document.getElementById('videoTexture');
+            const playPauseButton = document.getElementById('playPauseButton');
+            const playPauseText = document.getElementById('playPauseText');
+            let isPlaying = true;
+
+            if (playPauseButton && videoElement && playPauseText) {
+                playPauseButton.addEventListener('click', () => {
+                    if (isPlaying) {
+                        videoElement.pause();
+                        playPauseText.textContent = 'Lire Vidéo';
+                    } else {
+                        videoElement.play().catch(error => {
+                            console.error('Erreur lors de la lecture de la vidéo :', error);
+                        });
+                        playPauseText.textContent = 'Pause Vidéo';
+                    }
+                    isPlaying = !isPlaying;
+                });
+
+                videoElement.addEventListener('play', () => {
+                    isPlaying = true;
+                    playPauseText.textContent = 'Pause Vidéo';
+                });
+                videoElement.addEventListener('pause', () => {
+                    isPlaying = false;
+                    playPauseText.textContent = 'Lire Vidéo';
+                });
+            } else {
+                console.error('Un ou plusieurs éléments de contrôle (bouton, vidéo, texte) sont introuvables. Vérifiez les IDs.');
+            }
+
+            if (modelViewer) {
+                console.log('modelViewer element found, attaching scene-graph-ready listener.'); // Debug log
+
+                // Fonction à exécuter lorsque le graphe de scène est prêt
+                const onSceneGraphReady = () => {
+                    console.log('Graphe de scène 3D prêt.'); // This is the log we expect to see
+
+                    const scene = modelViewer.scene; 
+
+                    if (!scene) {
+                        console.error('Scène Three.js non trouvée ou non prête.');
+                        return;
+                    }
+
+                    let loadedModelRoot = null;
+                    if (scene.children && scene.children.length > 0) {
+                        for (const child of scene.children) {
+                            if (child instanceof THREE.Group || child instanceof THREE.Mesh) {
+                                loadedModelRoot = child;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!loadedModelRoot) {
+                        console.error('Racine du modèle 3D non trouvée dans la scène.');
+                        return;
+                    }
+
+                    console.log('Debug: Racinedu modèle chargée:', loadedModelRoot);
+                    console.log('Debug: Type de loadedModelRoot:', typeof loadedModelRoot);
+                    console.log('Debug: loadedModelRoot est une instance de THREE.Object3D (notre import) ?', loadedModelRoot instanceof THREE.Object3D);
+
+                    // --- DÉBOGAGE : LOGUER TOUS LES MATÉRIAUX ---
+                    console.log('--- Début du log des matériaux du modèle ---');
+                    findAndLogMaterials(loadedModelRoot);
+                    console.log('--- Fin du log des matériaux du modèle ---');
+                    // --- FIN DÉBOGAGE ---
+
+                    // Le code d'application de la texture vidéo est toujours désactivé
+                    // en attendant que vous nous fournissiez le nom correct du matériau.
+                    /*
+                    try {
+                        const videoTexture = new THREE.VideoTexture(videoElement);
+                        videoTexture.needsUpdate = true;
+
+                        const targetMaterialName = "Screen"; // À CONFIRMER AVEC LE LOG DE LA CONSOLE
+
+                        const textureApplied = findAndApplyVideoTexture(loadedModelRoot, videoTexture, targetMaterialName);
+
+                        if (textureApplied) {
+                            console.log(`Texture vidéo appliquée au matériau "${targetMaterialName}".`);
+                            videoElement.play().catch(error => {
+                                console.error('Erreur lors de la lecture de la vidéo :', error);
+                            });
+                        } else {
+                            console.warn(`Aucun matériau nommé "${targetMaterialName}" trouvé sur le modèle pour appliquer la texture vidéo.`);
+                        }
+                    } catch (e) {
+                        console.error('Erreur lors de la création de VideoTexture ou de l\'application de la texture:', e);
+                    }
+                    */
+                };
+
+                // Attacher l'écouteur d'événement
+                modelViewer.addEventListener('scene-graph-ready', onSceneGraphReady);
+
+                // Vérifier si le modèle est déjà chargé et le graphe de scène est prêt
+                // Cela gère les cas où l'événement se déclenche très tôt
+                if (modelViewer.model && modelViewer.scene) {
+                    console.log('Model and scene already loaded, executing onSceneGraphReady immediately.'); // Debug log
+                    onSceneGraphReady();
+                }
+
+                modelViewer.addEventListener('error', (event) => {
+                    console.error('Erreur de chargement du modèle:', event.detail);
+                });
+            } else {
+                console.error('L\'élément model-viewer est introuvable au chargement du DOM.');
+            }
+
+            window.customElements.whenDefined('model-viewer').then(() => {
+                console.log('model-viewer custom element defined (after whenDefined promise resolved).'); // Debug log
+            });
+        });
+    </script>
+<script type="module">import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+window.THREE = THREE;</script><script type="module">
+const modelViewer = document.querySelector("model-viewer");
+const video = document.getElementById("video");
+
+modelViewer.addEventListener("load", () => {
+  const material = modelViewer.model.materials.find(mat => mat.name === "Screen");
+  if (material) {
+    const texture = new THREE.VideoTexture(video);
+    texture.flipY = false;
+    texture.encoding = THREE.sRGBEncoding;
+    material.pbrMetallicRoughness.setBaseColorTexture(texture);
+  } else {
+    console.warn("Matériau 'Screen' non trouvé dans le modèle.");
+}
+});
+</script></body>
+</html>

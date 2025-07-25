@@ -27,28 +27,23 @@
     fetch(link.href, fetchOpts);
   }
 })();
-window.addEventListener("DOMContentLoaded", () => {
-  const modelViewer = document.getElementById("ar-model");
-  if (!modelViewer) {
-    console.warn("model-viewer element not found");
-    return;
+const modelViewerAnimated = document.querySelector("model-viewer#animated");
+let videoTexture = null;
+customElements.whenDefined("model-viewer").then(() => {
+  videoTexture = modelViewerAnimated.createVideoTexture("/WebAR-app/Dior-Jadore5th_916_LQ.mp4");
+});
+modelViewerAnimated.addEventListener("load", async () => {
+  const materials = modelViewerAnimated.model.materials;
+  const screenMaterial = materials.find((mat) => mat.name === "Screen");
+  if (screenMaterial && videoTexture) {
+    const { pbrMetallicRoughness } = screenMaterial;
+    pbrMetallicRoughness.baseColorTexture.setTexture(videoTexture);
+    screenMaterial.emissiveTexture.setTexture(videoTexture);
+    const sampler = screenMaterial.pbrMetallicRoughness.baseColorTexture.texture.sampler;
+    sampler.setScale({ u: 1, v: -1 });
+    const samplerEmissive = screenMaterial.pbrMetallicRoughness.emissiveTexture.texture.sampler;
+    samplerEmissive.setScale({ u: 1, v: -1 });
+  } else {
+    console.warn("Matériau 'Screen' non trouvé ou texture vidéo non prête.");
   }
-  modelViewer.addEventListener("load", () => {
-    const model = modelViewer.model;
-    if (!model) return;
-    model.traverse((node) => {
-      if (node.isMesh && node.material.name === "Screen") {
-        const video = document.createElement("video");
-        video.src = "/WebAR-app/Dior-Jadore5th_916_LQ.mp4";
-        video.crossOrigin = "anonymous";
-        video.loop = true;
-        video.muted = true;
-        video.play();
-        const videoTexture = new THREE.VideoTexture(video);
-        node.material.map = videoTexture;
-        node.material.needsUpdate = true;
-        videoTexture.flipY = false;
-      }
-    });
-  });
 });
